@@ -4,116 +4,312 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Kanjiquick</title>
+    <link rel="manifest" href="manifest.json">
     <script src="https://unpkg.com/wanakana"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@200&family=Noto+Serif+JP:wght@200&family=Sawarabi+Mincho&family=Yuji+Syuku&family=Kaisei+Decol:wght@400&display=swap" rel="stylesheet">
-    <link rel="manifest" href="manifest.json">
     <style>
         :root {
             --bg-color: #1a1a2e; --card-bg: #16213e; --accent: #e94560;
             --correct: #00ff7f; --incorrect: #ff4d4d; --oops: #f1c40f;
             --text: #ffffff; --meaning-color: #3498db; --reading-color: #533483;
             --apprentice: #dd0093; --guru: #882d9e; --master: #294ddb; --enlightened: #0093dd; --burned: #434343;
+            --input-bg: #0f3460;
         }
         body { font-family: 'Inter', sans-serif; text-align: center; padding: 20px; background: var(--bg-color); color: var(--text); margin: 0; }
         #container { max-width: 600px; margin: 40px auto; background: var(--card-bg); padding: 30px; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        
+        h2 { margin-top: 0; margin-bottom: 20px; }
+
+        /* INPUT STYLING */
+        input[type="text"], input[type="number"] { 
+            font-size: 20px; padding: 15px; width: 100%; box-sizing: border-box; 
+            border-radius: 12px; border: 2px solid rgba(255,255,255,0.05); 
+            background-color: var(--input-bg); color: white !important;
+            outline: none; text-align: center; transition: background-color 0.3s ease, border-color 0.2s ease; 
+        }
+        input[type="text"]:focus, input[type="number"]:focus { border-color: rgba(255,255,255,0.6); box-shadow: 0 0 12px rgba(255,255,255,0.1); }
+        input::placeholder { color: rgba(255,255,255,0.3); }
+
+        /* SETUP SCREEN */
+        #setup { display: flex; flex-direction: column; gap: 15px; text-align: left; }
+        .input-wrapper { display: flex; flex-direction: column; gap: 5px; }
+        .input-label { font-size: 11px; color: #bdc3c7; font-weight: bold; text-transform: uppercase; margin-left: 5px; letter-spacing: 1px; }
+        .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; }
+        .checkbox-item, .radio-item { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; user-select: none; }
+        .checkbox-item input, .radio-item input { width: 20px; height: 20px; margin: 0; cursor: pointer; accent-color: var(--accent); }
+        .radio-group { display: flex; gap: 15px; background: rgba(0,0,0,0.2); padding: 12px 15px; border-radius: 12px; margin-top: 5px; }
+
+        /* PROGRESS BAR */
+        #progress-container { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 20px; overflow: hidden; }
+        #progress-bar { width: 0%; height: 100%; background: var(--accent); transition: width 0.3s ease; }
+
+        /* QUIZ SCREEN */
         #score-bar { display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 13px; color: #bdc3c7; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 12px; }
-        .stat-box span { color: var(--accent); font-weight: bold; }
-        #srs-badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 50px; display: inline-block; margin-bottom: 5px; color: white; opacity: 0.9; }
-        #kanji { font-size: 100px; margin: 10px 0; line-height: 1.1; transition: all 0.2s ease; }
-        #prompt-type { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; display: inline-block; padding: 6px 16px; border-radius: 6px; }
-        input { font-size: 20px; padding: 15px; width: 85%; border-radius: 12px; border: 2px solid transparent; outline: none; text-align: center; color: white; transition: all 0.3s ease; margin-bottom: 15px; }
-        #feedback { min-height: 120px; margin-top: 20px; font-size: 19px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #srs-badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 50px; display: inline-block; margin-bottom: 5px; color: white; }
+        #kanji { font-size: 100px; margin: 10px 0; line-height: 1.1; }
+        #prompt-type { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; display: inline-block; padding: 6px 16px; border-radius: 6px; color: white; }
+        #feedback { min-height: 120px; margin-top: 20px; font-size: 19px; }
+        
+        .btn { padding: 16px; font-size: 16px; width: 100%; cursor: pointer; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: bold; }
         .incorrect { color: var(--incorrect); }
-        .oops { color: var(--oops); font-weight: bold; line-height: 1.4; }
-        .btn { padding: 14px 28px; font-size: 16px; cursor: pointer; background: var(--accent); color: white; border: none; border-radius: 10px; font-weight: bold; margin-top: 10px; }
-        .btn-secondary { background: #533483; }
+        .oops { color: var(--oops); font-weight: bold; }
+        .hidden { display: none !important; }
         .exit-links { margin-top: 30px; display: flex; justify-content: center; gap: 20px; }
-        .exit-link { background: transparent; color: #95a5a6; font-size: 13px; text-decoration: underline; cursor: pointer; border: none; padding: 0; }
-        #missed-list { text-align: left; margin: 20px auto; max-width: 450px; max-height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; }
-        .missed-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #2c3e50; }
-        .missed-char-link { font-size: 28px; width: 60px; text-decoration: none; color: var(--accent); transition: transform 0.2s ease; display: inline-block; text-align: center; }
-        .missed-char-link:hover { transform: scale(1.2); }
-        .missed-labels { flex-grow: 1; font-size: 12px; color: #bdc3c7; }
-        .missed-labels span { margin-right: 10px; padding: 2px 6px; border-radius: 4px; }
-        .label-meaning { background: var(--meaning-color); color: white; }
-        .label-reading { background: var(--reading-color); color: white; }
-        .filter-group { margin: 15px 0; text-align: left; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
-        .checkbox-wrapper { display: flex; align-items: center; cursor: pointer; }
-        .checkbox-wrapper input { margin-right: 10px; width: 18px; height: 18px; cursor: pointer; }
-        .hidden { display: none; }
+        .exit-link { background: transparent; color: #95a5a6; font-size: 13px; text-decoration: underline; cursor: pointer; border: none; }
+
+        /* RESULTS */
+        #missed-list { text-align: left; margin: 20px auto; max-width: 450px; max-height: 400px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px; }
+        .missed-item { display: flex; align-items: center; padding: 15px 0; border-bottom: 1px solid #2c3e50; }
+        .missed-char-link { font-size: 32px; width: 70px; text-decoration: none; color: var(--accent); text-align: center; font-weight: 200; }
+        .missed-details { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
+        .missed-labels { font-size: 11px; color: #bdc3c7; display: flex; gap: 5px; text-transform: uppercase; font-weight: bold; }
+        .label-pill { padding: 3px 10px; border-radius: 4px; color: white; }
+        .missed-meaning { font-size: 15px; color: #ecf0f1; text-transform: capitalize; }
     </style>
 </head>
 <body>
 <div id="container">
+    <h2>Kanjiquick</h2>
+    <div id="loading-msg" class="hidden"><h3>Loading Kanji...</h3></div>
     <div id="setup">
-        <h2>Kanjiquick</h2>
-        <input type="text" id="apiKey" placeholder="Enter V2 API Key" style="background: #0f3460; border: 2px solid #0f3460;" onkeydown="if(event.key==='Enter') startQuiz()">
-        <div style="text-align: left; margin-top: 10px;">
-            <label class="checkbox-wrapper" style="font-weight: bold; color: #bdc3c7;">
-                <input type="checkbox" id="randomizeFont"> 🎭 Randomize Fonts
-            </label>
+        <div class="input-wrapper">
+            <span class="input-label">WaniKani API Key</span>
+            <input type="text" id="apiKey" placeholder="Paste Key..." onkeydown="if(event.key==='Enter') startQuiz()">
         </div>
-        <div style="text-align: left; margin-top: 10px;">
-            <label style="font-size: 13px; color: #bdc3c7; font-weight: bold;">Max Kanji (blank = all):</label>
-            <input type="number" id="maxItems" style="background: #0f3460; width: 40%; margin-top: 5px;" onkeydown="if(event.key==='Enter') startQuiz()">
+        <label class="checkbox-item" style="margin-left: 5px;"><input type="checkbox" id="randomizeFont"><span>🎭 Randomize Fonts</span></label>
+        
+        <div class="input-wrapper" style="margin-top: 5px;">
+            <span class="input-label">Study Mode</span>
+            <div class="radio-group">
+                <label class="radio-item"><input type="radio" name="studyMode" value="both" checked> Both</label>
+                <label class="radio-item"><input type="radio" name="studyMode" value="meaning"> Meaning</label>
+                <label class="radio-item"><input type="radio" name="studyMode" value="reading"> Reading</label>
+            </div>
         </div>
-        <div class="filter-group">
-            <label class="checkbox-wrapper"><input type="checkbox" value="1,2,3,4" checked> Apprentice</label>
-            <label class="checkbox-wrapper"><input type="checkbox" value="5,6" checked> Guru</label>
-            <label class="checkbox-wrapper"><input type="checkbox" value="7" checked> Master</label>
-            <label class="checkbox-wrapper"><input type="checkbox" value="8" checked> Enlightened</label>
-            <label class="checkbox-wrapper"><input type="checkbox" value="9" checked> Burned</label>
+
+        <div class="input-wrapper">
+            <span class="input-label">Max Kanji (blank = all)</span>
+            <input type="number" id="maxItems" placeholder="e.g. 20" onkeydown="if(event.key==='Enter') startQuiz()">
+        </div>
+        <div class="filter-grid">
+            <label class="checkbox-item"><input type="checkbox" value="1,2,3,4" checked> Apprentice</label>
+            <label class="checkbox-item"><input type="checkbox" value="5,6" checked> Guru</label>
+            <label class="checkbox-item"><input type="checkbox" value="7" checked> Master</label>
+            <label class="checkbox-item"><input type="checkbox" value="8" checked> Enlightened</label>
+            <label class="checkbox-item" style="grid-column: span 2;"><input type="checkbox" value="9" checked> Burned Items</label>
         </div>
         <button class="btn" onclick="startQuiz()">Load Quiz</button>
     </div>
     <div id="quiz" class="hidden">
+        <div id="progress-container"><div id="progress-bar"></div></div>
         <div id="score-bar">
-            <div class="stat-box">Correct: <span id="correct-count">0</span></div>
-            <div class="stat-box">Wrong: <span id="wrong-count">0</span></div>
-            <div class="stat-box">Left: <span id="remaining-count">0</span></div>
+            <div>Correct: <span id="correct-count">0</span></div>
+            <div>Wrong: <span id="wrong-count">0</span></div>
+            <div>Left: <span id="remaining-count">0</span></div>
         </div>
-        <div id="srs-badge">STAGE</div><br>
-        <div id="prompt-type">TYPE</div>
+        <div id="srs-badge">STAGE</div><br><div id="prompt-type">TYPE</div>
         <div id="kanji"></div>
         <input type="text" id="answer" placeholder="..." autocomplete="off">
         <div id="feedback"></div>
-        <div class="exit-links">
-            <button class="exit-link" onclick="wrapUp()">Wrap Up</button>
-            <button class="exit-link" onclick="endNow()">End Now</button>
-        </div>
+        <div class="exit-links"><button class="exit-link" onclick="wrapUp()">Wrap Up</button><button class="exit-link" onclick="endNow()">End</button></div>
     </div>
     <div id="results" class="hidden">
-        <h2>Results</h2>
-        <div id="final-stats" style="font-size: 20px; margin-bottom: 20px;"></div>
+        <h2 id="results-title">Results</h2>
+        <div id="final-stats" style="font-size: 22px; margin-bottom: 20px; font-weight: bold;"></div>
         <div id="missed-list"></div>
-        <button class="btn btn-secondary hidden" id="repeatMissedBtn" onclick="repeatMissed()">Repeat Specific Failures</button>
-        <br>
-        <button class="btn" onclick="location.reload()">Restart New Session</button>
+        <button class="btn" id="repeatMissedBtn" onclick="repeatMissed()">Repeat Fails Only</button><br>
+        <button class="btn" onclick="location.reload()" style="background:#533483; margin-top: 10px;">New Session</button>
     </div>
 </div>
 <script>
 let quizPool = [], missedTracker = {}, currentItem = null, showingAnswer = false, isBound = false;
-let stats = { correct: 0, wrong: 0, attempted: 0 };
-let fullLibrary = [], startedIds = new Set(), idToStageMap = {};
-let isFontRandomized = false;
-const numMap = { '0':'zero','1':'one','2':'two','3':'three','4':'four','5':'five','6':'six','7':'seven','8':'eight','9':'nine','10':'ten' };
-const srsNames = ["Initiated", "Apprentice", "Apprentice", "Apprentice", "Apprentice", "Guru", "Guru", "Master", "Enlightened", "Burned"];
+let stats = { total: { correct: 0, wrong: 0, attempted: 0 }, meaning: { correct: 0, attempted: 0 }, reading: { correct: 0, attempted: 0 } }; 
+let fullLibrary = [], idToStageMap = {};
+let isFontRandomized = false, totalTasks = 0, currentStudyMode = 'both';
+const numMap = {'0':'zero','1':'one','2':'two','3':'three','4':'four','5':'five','6':'six','7':'seven','8':'eight','9':'nine','10':'ten'};
+const srsNames = ["Ini", "Apprentice", "Apprentice", "Apprentice", "Apprentice", "Guru", "Guru", "Master", "Enlightened", "Burned"];
 const srsColors = ["#eee", "var(--apprentice)", "var(--apprentice)", "var(--apprentice)", "var(--apprentice)", "var(--guru)", "var(--guru)", "var(--master)", "var(--enlightened)", "var(--burned)"];
-const fonts = [{ family: "'Noto Sans JP', sans-serif", weight: "200" },{ family: "'Noto Serif JP', serif", weight: "200" },{ family: "'Sawarabi Mincho', serif", weight: "400" },{ family: "'Yuji Syuku', serif", weight: "400" },{ family: "'Kaisei Decol', serif", weight: "400" }];
-window.onload = () => { const keyEl = document.getElementById('apiKey'); if(keyEl && localStorage.getItem('wk_api_key')) keyEl.value = localStorage.getItem('wk_api_key'); };
+const fonts = [{f:"'Noto Sans JP'",w:"200"},{f:"'Noto Serif JP'",w:"200"},{f:"'Sawarabi Mincho'",w:"400"},{f:"'Yuji Syuku'",w:"400"},{f:"'Kaisei Decol'",w:"400"}];
+
+window.onload = () => { if(localStorage.getItem('wk_api_key')) document.getElementById('apiKey').value = localStorage.getItem('wk_api_key'); };
+
 function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
-function normalize(s) { return s.toLowerCase().trim().replace(/our/g,'or').replace(/ise/g,'ize').replace(/yse/g,'yze').replace(/re(?=\s|$)/g,'er'); }
-function getDistance(a, b) { const m = Array.from({length: b.length + 1}, (_, i) => [i]); for (let j = 0; j <= a.length; j++) m[0][j] = j; for (let i = 1; i <= b.length; i++) { for (let j = 1; j <= a.length; j++) { m[i][j] = b[i-1] === a[j-1] ? m[i-1][j-1] : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1); } } return m[b.length][a.length]; }
-async function fetchAll(ep, key) { let res = []; let url = `https://api.wanikani.com/v2/${ep}`; while (url) { const r = await fetch(url, { headers: { "Authorization": `Bearer ${key}` } }); if (r.status === 429) { await new Promise(f => setTimeout(f, 1000)); continue; } if (!r.ok) throw new Error(r.status); const d = await r.json(); res = res.concat(d.data); url = d.pages.next_url; } return res; }
-async function startQuiz() { const keyEl = document.getElementById('apiKey'); const maxEl = document.getElementById('maxItems'); const fontEl = document.getElementById('randomizeFont'); if (!keyEl) return; const key = keyEl.value.trim(); if (!key) return alert("Enter API Key"); isFontRandomized = fontEl ? fontEl.checked : false; localStorage.setItem('wk_api_key', key); const checked = Array.from(document.querySelectorAll('.filter-group input:checked')); const stages = checked.map(c => c.value.split(',')).flat().map(Number); const maxLimit = maxEl ? (parseInt(maxEl.value) || 0) : 0; document.getElementById('setup').innerHTML = "<h2>Loading Library...</h2>"; try { const assigns = await fetchAll('assignments?subject_types=kanji', key); idToStageMap = {}; assigns.forEach(a => { idToStageMap[a.data.subject_id] = a.data.srs_stage; }); let ids = Object.keys(idToStageMap).filter(id => stages.includes(idToStageMap[id])).map(Number); const finalLimit = maxLimit > 0 ? maxLimit : ids.length; ids = shuffle(ids).slice(0, finalLimit); fullLibrary = await fetchAll('subjects?types=kanji', key); buildPool(ids); document.getElementById('setup').classList.add('hidden'); document.getElementById('quiz').classList.remove('hidden'); resetStats(); nextQuestion(); } catch (e) { alert("Error: " + e.message); location.reload(); } }
-function buildPool(ids) { quizPool = []; startedIds.clear(); const subjects = fullLibrary.filter(s => ids.includes(s.id)); subjects.forEach(s => { const stage = idToStageMap[s.id] || 0; const d = { c: s.data.characters, m: s.data.meanings.map(x => x.meaning.toLowerCase()), r: s.data.readings.map(x => x.reading), id: s.id, stage: stage }; quizPool.push({...d, task: 'meaning'}, {...d, task: 'reading'}); }); shuffle(quizPool); }
-function resetStats() { stats = { correct: 0, wrong: 0, attempted: 0 }; missedTracker = {}; }
-function repeatMissed() { const tasks = []; Object.keys(missedTracker).forEach(char => { const s = fullLibrary.find(item => item.data.characters === char); if (!s) return; const d = { c: s.data.characters, m: s.data.meanings.map(x => x.meaning.toLowerCase()), r: s.data.readings.map(x => x.reading), id: s.id, stage: idToStageMap[s.id] || 0 }; if (missedTracker[char].meaning) tasks.push({...d, task: 'meaning'}); if (missedTracker[char].reading) tasks.push({...d, task: 'reading'}); }); if (!tasks.length) return; resetStats(); quizPool = shuffle(tasks); startedIds.clear(); document.getElementById('results').classList.add('hidden'); document.getElementById('quiz').classList.remove('hidden'); nextQuestion(); }
-function wrapUp() { quizPool = quizPool.filter(item => startedIds.has(item.id)); document.getElementById('remaining-count').innerText = quizPool.length; if (!quizPool.length) return endQuiz(); alert(`Finishing ${quizPool.length} active tasks.`); }
+function normalize(s) { return s.toLowerCase().trim().replace(/our/g,'or').replace(/ise/g,'ize'); }
+
+async function fetchAll(ep, key) {
+    let res = [], url = `https://api.wanikani.com/v2/${ep}`;
+    while (url) {
+        const r = await fetch(url, { headers: { "Authorization": `Bearer ${key}` } });
+        if (r.status === 429) { await new Promise(f => setTimeout(f, 1000)); continue; }
+        const d = await r.json(); res = res.concat(d.data); url = d.pages.next_url;
+    }
+    return res;
+}
+
+async function startQuiz() {
+    const key = document.getElementById('apiKey').value.trim();
+    if (!key) return alert("API Key Required");
+    const maxLimit = parseInt(document.getElementById('maxItems').value) || 0;
+    const fontChecked = document.getElementById('randomizeFont').checked;
+    currentStudyMode = document.querySelector('input[name="studyMode"]:checked').value;
+    const stages = Array.from(document.querySelectorAll('.filter-grid input:checked')).map(c => c.value.split(',')).flat().map(Number);
+    localStorage.setItem('wk_api_key', key);
+    isFontRandomized = fontChecked;
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('loading-msg').classList.remove('hidden');
+    try {
+        const assigns = await fetchAll('assignments?subject_types=kanji', key);
+        assigns.forEach(a => idToStageMap[a.data.subject_id] = a.data.srs_stage);
+        let ids = shuffle(Object.keys(idToStageMap).filter(id => stages.includes(idToStageMap[id])).map(Number));
+        if (maxLimit > 0) ids = ids.slice(0, maxLimit);
+        fullLibrary = await fetchAll('subjects?types=kanji', key);
+        buildPool(ids, currentStudyMode);
+        totalTasks = quizPool.length;
+        document.getElementById('loading-msg').classList.add('hidden');
+        document.getElementById('quiz').classList.remove('hidden');
+        nextQuestion();
+    } catch (e) { alert("Error: " + e.message); location.reload(); }
+}
+
+function buildPool(ids, mode = 'both') {
+    quizPool = [];
+    fullLibrary.filter(s => ids.includes(s.id)).forEach(s => {
+        const d = { 
+            c: s.data.characters, m: s.data.meanings.map(x => x.meaning.toLowerCase()), 
+            r: s.data.readings.map(x => ({ text: x.reading, isPrimary: x.primary })),
+            id: s.id, stage: idToStageMap[s.id] || 0 
+        };
+        if (mode === 'both' || mode === 'meaning') quizPool.push({...d, task: 'meaning'});
+        if (mode === 'both' || mode === 'reading') quizPool.push({...d, task: 'reading'});
+    });
+    shuffle(quizPool);
+}
+
+function nextQuestion() {
+    showingAnswer = false;
+    if (!quizPool.length) return endQuiz();
+    currentItem = quizPool.pop();
+    document.getElementById('correct-count').innerText = stats.total.correct;
+    document.getElementById('wrong-count').innerText = stats.total.wrong;
+    document.getElementById('remaining-count').innerText = quizPool.length;
+    const progress = totalTasks > 0 ? (stats.total.attempted / totalTasks) * 100 : 0;
+    document.getElementById('progress-bar').style.width = progress + '%';
+    const kEl = document.getElementById('kanji'); kEl.innerText = currentItem.c;
+    const font = isFontRandomized ? fonts[Math.floor(Math.random() * fonts.length)] : fonts[0];
+    kEl.style.fontFamily = font.f; kEl.style.fontWeight = font.w;
+    const pEl = document.getElementById('prompt-type'); pEl.innerText = currentItem.task;
+    const sEl = document.getElementById('srs-badge'); sEl.innerText = srsNames[currentItem.stage];
+    sEl.style.backgroundColor = srsColors[currentItem.stage];
+    const iEl = document.getElementById('answer'); iEl.value = ""; iEl.focus();
+    const color = currentItem.task === 'reading' ? "var(--reading-color)" : "var(--meaning-color)";
+    iEl.style.backgroundColor = color; pEl.style.backgroundColor = color;
+    document.getElementById('feedback').innerHTML = "";
+    if (currentItem.task === 'reading') { wanakana.bind(iEl); isBound = true; } 
+    else { if(isBound) { try { wanakana.unbind(iEl); } catch(e){} isBound = false; } }
+}
+
+document.getElementById('answer').addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+        const v = document.getElementById('answer').value.toLowerCase().trim();
+        if (showingAnswer) return nextQuestion();
+        if (!v) return;
+        let ok = false;
+        if (currentItem.task === 'meaning') {
+            ok = currentItem.m.some(m => m === v || normalize(m) === normalize(v) || (numMap[v] && m === numMap[v]));
+            if (!ok && currentItem.r.some(r => r.text === v || r.text === wanakana.toHiragana(v))) {
+                document.getElementById('feedback').innerHTML = `<div class="oops">Oops! Reading entered.</div>`; return;
+            }
+        } else {
+            ok = currentItem.r.some(r => r.text === v);
+            if (!ok && currentItem.m.includes(v)) {
+                document.getElementById('feedback').innerHTML = `<div class="oops">Oops! Meaning entered.</div>`; return;
+            }
+        }
+        
+        stats.total.attempted++;
+        stats[currentItem.task].attempted++;
+        
+        if (ok) { 
+            stats.total.correct++; 
+            stats[currentItem.task].correct++; 
+            nextQuestion(); 
+        } 
+        else {
+            stats.total.wrong++; showingAnswer = true;
+            if (!missedTracker[currentItem.c]) missedTracker[currentItem.c] = { meaning: false, reading: false };
+            missedTracker[currentItem.c][currentItem.task] = true;
+            let display = currentItem.task === 'meaning' ? currentItem.m.join(', ') : 
+                          currentItem.r.map(r => r.isPrimary ? `<strong>${r.text}</strong>` : r.text).join(', ');
+            document.getElementById('feedback').innerHTML = `<div class="incorrect">Correct: ${display}</div><small>Enter to continue</small>`;
+        }
+    }
+});
+
+function endQuiz() {
+    document.getElementById('quiz').classList.add('hidden'); document.getElementById('results').classList.remove('hidden');
+    
+    const acc = stats.total.attempted === 0 ? 0 : Math.round((stats.total.correct / stats.total.attempted) * 100);
+    const meaningAcc = stats.meaning.attempted === 0 ? 0 : Math.round((stats.meaning.correct / stats.meaning.attempted) * 100);
+    const readingAcc = stats.reading.attempted === 0 ? 0 : Math.round((stats.reading.correct / stats.reading.attempted) * 100);
+    
+    let statsHtml = `<div>Accuracy: ${acc}%</div><div style="font-size: 14px; margin-top: 12px; display: flex; justify-content: center; gap: 15px; font-weight: bold; text-transform: uppercase;">`;
+    
+    if (currentStudyMode === 'both' || currentStudyMode === 'meaning') {
+        statsHtml += `<span style="background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 6px; color: var(--meaning-color);">Meaning: ${meaningAcc}%</span>`;
+    }
+    if (currentStudyMode === 'both' || currentStudyMode === 'reading') {
+        statsHtml += `<span style="background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 6px; color: var(--reading-color);">Reading: ${readingAcc}%</span>`;
+    }
+    statsHtml += `</div>`;
+    
+    document.getElementById('final-stats').innerHTML = statsHtml;
+    
+    const list = document.getElementById('missed-list'); list.innerHTML = "";
+    const rmBtn = document.getElementById('repeatMissedBtn');
+    const resTitle = document.getElementById('results-title');
+
+    if (acc === 100) {
+        resTitle.innerText = "Excellent Work! 🎊";
+        list.innerHTML = "<p style='font-size: 18px; color: var(--correct); font-weight: bold; margin: 20px 0;'>Perfect Score! You crushed every Kanji in this batch.</p>";
+        if(rmBtn) rmBtn.classList.add('hidden');
+    } else {
+        resTitle.innerText = "Results";
+        if(rmBtn) rmBtn.classList.remove('hidden');
+        Object.keys(missedTracker).forEach(c => {
+            let lbls = (missedTracker[c].meaning ? '<span class="label-pill" style="background:var(--meaning-color)">Meaning</span>' : '') + 
+                       (missedTracker[c].reading ? '<span class="label-pill" style="background:var(--reading-color)">Reading</span>' : '');
+            
+            // Find the character in the full library to get its meanings
+            let subject = fullLibrary.find(s => s.data.characters === c);
+            let meaningsText = subject ? subject.data.meanings.map(m => m.meaning).join(', ') : '';
+
+            list.innerHTML += `
+                <div class="missed-item">
+                    <a href="https://www.wanikani.com/kanji/${c}" target="_blank" class="missed-char-link">${c}</a>
+                    <div class="missed-details">
+                        <div class="missed-labels">${lbls}</div>
+                        <div class="missed-meaning">${meaningsText}</div>
+                    </div>
+                </div>`;
+        });
+    }
+}
+
+function repeatMissed() {
+    const ids = fullLibrary.filter(s => missedTracker[s.data.characters]).map(s => s.id);
+    if (!ids.length) return;
+    const oldTracker = {...missedTracker}; 
+    stats = { total: { correct: 0, wrong: 0, attempted: 0 }, meaning: { correct: 0, attempted: 0 }, reading: { correct: 0, attempted: 0 } }; 
+    missedTracker = {};
+    buildPool(ids, currentStudyMode);
+    totalTasks = quizPool.length;
+    quizPool = quizPool.filter(p => oldTracker[p.c][p.task]);
+    document.getElementById('results').classList.add('hidden'); document.getElementById('quiz').classList.remove('hidden');
+    nextQuestion();
+}
+
+function wrapUp() { quizPool = []; nextQuestion(); }
 function endNow() { endQuiz(); }
-function nextQuestion() { showingAnswer = false; document.getElementById('correct-count').innerText = stats.correct; document.getElementById('wrong-count').innerText = stats.wrong; document.getElementById('remaining-count').innerText = quizPool.length; if (!quizPool.length) return endQuiz(); currentItem = quizPool.pop(); const inputEl = document.getElementById('answer'); const kanjiEl = document.getElementById('kanji'); const pEl = document.getElementById('prompt-type'); const srsEl = document.getElementById('srs-badge'); if(kanjiEl) { kanjiEl.innerText = currentItem.c; const font = isFontRandomized ? fonts[Math.floor(Math.random() * fonts.length)] : fonts[0]; kanjiEl.style.fontFamily = font.family; kanjiEl.style.fontWeight = font.weight; } pEl.innerText = currentItem.task; srsEl.innerText = srsNames[currentItem.stage]; srsEl.style.backgroundColor = srsColors[currentItem.stage]; inputEl.value = ""; document.getElementById('feedback').innerHTML = ""; if (currentItem.task === 'reading') { wanakana.bind(inputEl); isBound = true; inputEl.placeholder = "読み方"; } else { if(isBound) { try { wanakana.unbind(inputEl); } catch(e){} isBound = false; } inputEl.placeholder = "Meaning"; } const color = currentItem.task === 'reading' ? "var(--reading-color)" : "var(--meaning-color)"; inputEl.style.backgroundColor = color; pEl.style.backgroundColor = color; inputEl.focus(); }
-function endQuiz() { document.getElementById('quiz').classList.add('hidden'); document.getElementById('results').classList.remove('hidden'); const acc = stats.attempted === 0 ? 0 : Math.round((stats.correct / stats.attempted) * 100); document.getElementById('final-stats').innerHTML = `Accuracy: <strong>${acc}%</strong><br>Correct: ${stats.correct} | Wrong: ${stats.wrong}`; const list = document.getElementById('missed-list'); list.innerHTML = ""; const missedChars = Object.keys(missedTracker); const rmBtn = document.getElementById('repeatMissedBtn'); if (!missedChars.length) { list.innerHTML = "<p>Perfect!</p>"; if(rmBtn) rmBtn.classList.add('hidden'); } else { if(rmBtn) rmBtn.classList.remove('hidden'); missedChars.forEach(c => { let lbls = (missedTracker[c].meaning ? '<span class="label-meaning">Meaning</span>' : '') + (missedTracker[c].reading ? '<span class="label-reading">Reading</span>' : ''); list.innerHTML += `<div class="missed-item"><a href="https://www.wanikani.com/kanji/${c}" target="_blank" class="missed-char-link" style="font-family: 'Noto Sans JP'; font-weight: 200;">${c}</a><div class="missed-labels">${lbls}</div></div>`; }); } }
-document.getElementById('answer').addEventListener('keypress', e => { if (e.key === 'Enter') { const fb = document.getElementById('feedback'); const inputEl = document.getElementById('answer'); if (showingAnswer) return nextQuestion(); const v = inputEl?.value.toLowerCase().trim(); if (!v) return; if (currentItem.task === 'reading' && currentItem.r.some(r => v.startsWith(r) && v.length > r.length)) { fb.innerHTML = `<div class="oops">Remove okurigana!</div>`; return; } let ok = currentItem.task === 'meaning' ? currentItem.m.some(m => m === v || normalize(m) === normalize(v) || (numMap[v] && m === numMap[v])) : currentItem.r.includes(v); if (currentItem.task === 'meaning' && !ok && (currentItem.r.includes(v) || currentItem.r.includes(wanakana.toHiragana(v)))) { fb.innerHTML = `<div class="oops">Oops! Reading.</div>`; return; } if (currentItem.task === 'reading' && !ok && currentItem.m.includes(v)) { fb.innerHTML = `<div class="oops">Oops! Meaning.</div>`; return; } if (!ok && currentItem.task === 'meaning' && currentItem.m.some(m => getDistance(normalize(m), normalize(v)) <= Math.floor(m.length / 3) + 1)) { fb.innerHTML = `<div class="oops">Close! Fix spelling.</div>`; return; } stats.attempted++; if (ok) { stats.correct++; startedIds.add(currentItem.id); nextQuestion(); } else { stats.wrong++; showingAnswer = true; if (!missedTracker[currentItem.c]) missedTracker[currentItem.c] = { meaning: false, reading: false }; missedTracker[currentItem.c][currentItem.task] = true; fb.innerHTML = `<div class="incorrect">Correct: ${(currentItem.task === 'meaning' ? currentItem.m : currentItem.r).join(', ')}</div><small>Enter to continue</small>`; } } });
 </script>
 </body>
 </html>
